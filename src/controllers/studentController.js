@@ -14,8 +14,43 @@ exports.getStudents = async (req, res) => {
       filter.messId = req.query.messId;
     }
 
+    const Payment = require("../models/Payment");
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+
     const students = await Student.find(filter).sort({ createdAt: -1 });
-    res.json(students);
+
+    // Get all payments for current month
+    const payments = await Payment.find({
+      studentId: { $in: students.map((s) => s._id) },
+      month: currentMonth,
+    });
+
+    // Create a map of student payments
+    const paymentMap = new Map(
+      payments.map((p) => [p.studentId.toString(), p])
+    );
+
+    const formatted = students.map((s) => ({
+      id: s._id,
+      name: s.name,
+      gender: s.gender,
+      mobile: s.mobile,
+      address: s.address,
+      joiningDate: s.createdAt.toISOString().split("T")[0],
+      messId: s.messId,
+      mealPlan: s.mealPlan,
+      monthlyFee: s.fee,
+      membershipExpiry: s.membershipEnd
+        ? s.membershipEnd.toISOString().split("T")[0]
+        : null,
+      paymentStatus: paymentMap.has(s._id.toString()) ? "paid" : "unpaid",
+      isFrozen: s.isFrozen || false,
+      frozenDate: s.freezeStart
+        ? s.freezeStart.toISOString().split("T")[0]
+        : null,
+    }));
+
+    res.json(formatted);
   } catch (error) {
     console.error("Error fetching students:", error);
     res.status(500).json({ error: "Failed to fetch students" });
@@ -38,7 +73,36 @@ exports.getStudentById = async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    res.json(student);
+    const Payment = require("../models/Payment");
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+
+    // Check current month's payment
+    const payment = await Payment.findOne({
+      studentId: student._id,
+      month: currentMonth,
+    });
+
+    const formatted = {
+      id: student._id,
+      name: student.name,
+      gender: student.gender,
+      mobile: student.mobile,
+      address: student.address,
+      joiningDate: student.startDate.toISOString().split("T")[0],
+      messId: student.messId,
+      mealPlan: student.mealPlan,
+      monthlyFee: student.fee,
+      membershipExpiry: student.membershipEnd
+        ? student.membershipEnd.toISOString().split("T")[0]
+        : null,
+      paymentStatus: payment ? "paid" : "unpaid",
+      isFrozen: student.isFrozen || false,
+      frozenDate: student.freezeStart
+        ? student.freezeStart.toISOString().split("T")[0]
+        : null,
+    };
+
+    res.json(formatted);
   } catch (error) {
     console.error("Error fetching student:", error);
     res.status(500).json({ error: "Failed to fetch student" });
@@ -51,6 +115,7 @@ exports.getStudentById = async (req, res) => {
 exports.addStudent = async (req, res) => {
   try {
     const { name, mobile, address, mealPlan, fee, messId, gender } = req.body;
+    console.log(req.body);
 
     const assignedMessId = req.user.role === "owner" ? req.user.messId : messId;
     if (!assignedMessId)

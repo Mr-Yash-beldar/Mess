@@ -58,7 +58,28 @@ exports.me = async (req, res) => {
     // protect middleware already attaches req.user with password excluded
     if (!req.user) return res.status(401).json({ error: "Not authenticated" });
 
-    res.json({ user: req.user });
+    // Fetch fresh user from DB to include populated mess and originalPassword
+    const userFull = await User.findById(req.user.id).populate(
+      "messId",
+      "name"
+    );
+    if (!userFull) return res.status(404).json({ error: "User not found" });
+
+    const out = {
+      id: userFull._id,
+      username: userFull.username,
+      name: userFull.name || "",
+      contact: userFull.contact || "",
+      email: userFull.email || "",
+      messId: userFull.messId ? userFull.messId._id : null,
+      messName: userFull.messId ? userFull.messId.name : null,
+      password: userFull.originalPassword || null,
+      isActive: userFull.isActive,
+      subscriptionExpiry: userFull.subscriptionExpiry
+        ? new Date(userFull.subscriptionExpiry).toISOString().split("T")[0]
+        : null,
+    };
+    res.json({ user: out });
   } catch (err) {
     console.error("Error in /api/auth/me:", err);
     res.status(500).json({ error: "Server error" });

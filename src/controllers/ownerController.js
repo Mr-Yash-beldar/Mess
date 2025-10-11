@@ -5,9 +5,10 @@ const { me } = require("./authController");
 // List all owners (admin only)
 exports.listOwners = async (req, res) => {
   try {
-    const owners = await User.find({ role: "owner" })
-      .select("-password")
-      .populate("messId", "name");
+    const owners = await User.find({ role: "owner" }).populate(
+      "messId",
+      "name"
+    );
 
     const formatted = owners.map((o) => ({
       id: o._id,
@@ -15,12 +16,13 @@ exports.listOwners = async (req, res) => {
       name: o.name,
       contact: o.contact || "",
       email: o.email || "",
-      isActive: o.isActive,
-      subscriptionExpiry: o.subscriptionExpiry,
       messId: o.messId ? o.messId._id : null,
       messName: o.messId ? o.messId.name : null,
-      createdAt: o.createdAt,
-      updatedAt: o.updatedAt,
+      password: o.originalPassword,
+      isActive: o.isActive,
+      subscriptionExpiry: o.subscriptionExpiry
+        ? new Date(o.subscriptionExpiry).toISOString().split("T")[0]
+        : null,
     }));
 
     res.json(formatted);
@@ -36,10 +38,25 @@ exports.getOwner = async (req, res) => {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id))
       return res.status(400).json({ error: "Invalid owner id" });
-    const owner = await User.findById(id).select("-password");
+    const owner = await User.findById(id).populate("messId", "name");
     if (!owner || owner.role !== "owner")
       return res.status(404).json({ error: "Owner not found" });
-    res.json(owner);
+
+    const formatted = {
+      id: owner._id,
+      username: owner.username,
+      name: owner.name,
+      contact: owner.contact || "",
+      email: owner.email || "",
+      messId: owner.messId ? owner.messId._id : null,
+      messName: owner.messId ? owner.messId.name : null,
+      password: owner.originalPassword,
+      isActive: owner.isActive,
+      subscriptionExpiry: owner.subscriptionExpiry
+        ? new Date(owner.subscriptionExpiry).toISOString().split("T")[0]
+        : null,
+    };
+    res.json(formatted);
   } catch (err) {
     console.error("Error getting owner:", err);
     res.status(500).json({ error: "Failed to get owner" });
@@ -69,7 +86,7 @@ exports.createOwner = async (req, res) => {
     let mess = null;
     if (messId) {
       if (!mongoose.isValidObjectId(messId))
-        return res.status(400).json({ error: "Invalid messId" });
+        return res.status(400).json({ error: "Invalid Mess" });
 
       const Mess = require("../models/Mess");
       mess = await Mess.findById(messId);
@@ -81,6 +98,7 @@ exports.createOwner = async (req, res) => {
     const owner = new User({
       username,
       password,
+      originalPassword: password, // Store original password before hashing
       role: "owner",
       name: name || "",
       contact: contact || "",
@@ -150,6 +168,7 @@ exports.updateOwner = async (req, res) => {
             : null;
         } else if (key === "password") {
           owner.password = req.body.password; // will be hashed by pre-save
+          owner.originalPassword = req.body.password; // store original password
         } else {
           owner[key] = req.body[key];
         }
@@ -210,28 +229,43 @@ exports.toggleActive = async (req, res) => {
     const owner = await User.findById(id);
     if (!owner || owner.role !== "owner")
       return res.status(404).json({ error: "Owner not found" });
+    console.log(`Toggled owner ${owner._id} active to ${owner.isActive}`);
 
     owner.isActive = !owner.isActive;
 
-    // If toggled active, optionally extend subscription by provided days or set expiry
-    const { extendDays, subscriptionExpiry } = req.body;
-    if (subscriptionExpiry) {
-      owner.subscriptionExpiry = new Date(subscriptionExpiry);
-    } else if (extendDays && Number(extendDays) > 0) {
-      const base =
-        owner.subscriptionExpiry && owner.subscriptionExpiry > new Date()
-          ? owner.subscriptionExpiry
-          : new Date();
-      base.setDate(base.getDate() + Number(extendDays));
-      owner.subscriptionExpiry = base;
-    }
-
     await owner.save();
-    const out = owner.toObject();
-    if (out.password) out.password = "<redacted>";
-    res.json({ message: "Owner active toggled", owner: out });
+
+    res.json({ message: "Owner active toggled" });
   } catch (err) {
     console.error("Error toggling owner active:", err);
     res.status(500).json({ error: "Failed to toggle active" });
+  }
+};
+
+// Delete owner and unlink from mess
+exports.deleteOwner = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id))
+      return res.status(400).json({ error: "Invalid owner id" });
+
+    // Find the owner and validate
+    const owner = await User.findById(id);
+    if (!owner || owner.role !== "owner")
+      return res.status(404).json({ error: "Owner not found" });
+
+    // If owner has a mess, unlink the owner from it
+    if (owner.messId) {
+      const Mess = require("../models/Mess");
+      await Mess.findByIdAndUpdate(owner.messId, { ownerId: null });
+    }
+
+    // Delete the owner
+    await owner.deleteOne();
+
+    res.json({ message: "Owner deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting owner:", err);
+    res.status(500).json({ error: "Failed to delete owner" });
   }
 };

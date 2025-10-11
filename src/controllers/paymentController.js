@@ -21,12 +21,66 @@ exports.getPayments = async (req, res) => {
     }
 
     const payments = await Payment.find(filter)
-      .populate("studentId", "name mobile")
+      .populate("studentId", "name mobile fee")
       .populate("messId", "name")
       .populate("recordedBy", "username role")
       .sort({ paymentDate: -1 });
 
-    res.json(payments);
+    const formatted = payments.map((p) => {
+      // Convert month (YYYY-MM) to Month YYYY format
+      const [year, month] = p.month.split("-");
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      const monthName = monthNames[parseInt(month) - 1];
+
+      // Determine payment status from the student's paymentStatus map keyed by YYYY-MM
+      let status = "Pending";
+      const monthlyFee = p.studentId.fee;
+      if (p.amount === monthlyFee) {
+        status = "paid";
+      } else if (p.amount < monthlyFee) {
+        status = "partial";
+      } else if (p.amount > monthlyFee) {
+        status = "error";
+      }
+      // If membership expired before the payment date and not paid, mark as overdue
+      if (
+        p.studentId &&
+        p.studentId.membershipEnd &&
+        new Date(p.studentId.membershipEnd) < new Date() &&
+        status !== "paid"
+      ) {
+        status = "overdue";
+      }
+
+      return {
+        id: p._id,
+        studentId: p.studentId._id,
+        studentName: p.studentId.name,
+        messId: p.messId._id,
+        messName: p.messId.name,
+        amount: p.amount,
+        date: p.paymentDate.toISOString().split("T")[0],
+        mode: p.paymentMode,
+        status,
+        month: `${monthName} ${year}`,
+        monthlyFee: p.studentId.fee,
+      };
+    });
+
+    res.json(formatted);
   } catch (error) {
     console.error("Error fetching payments:", error);
     res.status(500).json({ error: "Failed to fetch payments" });
@@ -39,7 +93,7 @@ exports.getPayments = async (req, res) => {
 exports.getPaymentById = async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id)
-      .populate("studentId", "name")
+      .populate("studentId", "name fee")
       .populate("messId", "name")
       .populate("recordedBy", "username role");
 
@@ -52,7 +106,59 @@ exports.getPaymentById = async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    res.json(payment);
+    // Convert month (YYYY-MM) to Month YYYY format
+    const [year, month] = payment.month.split("-");
+    const monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    const monthName = monthNames[parseInt(month) - 1];
+
+    const formatted = {
+      id: payment._id,
+      studentId: payment.studentId._id,
+      studentName: payment.studentId.name,
+      messId: payment.messId._id,
+      messName: payment.messId.name,
+      amount: payment.amount,
+      date: payment.paymentDate.toISOString().split("T")[0],
+      mode: payment.paymentMode,
+      // Determine status from student's paymentStatus for the payment month
+      status: (() => {
+        let st = "unpaid";
+        if (payment.studentId && payment.studentId.paymentStatus) {
+          const map =
+            payment.studentId.paymentStatus instanceof Map
+              ? payment.studentId.paymentStatus
+              : new Map(Object.entries(payment.studentId.paymentStatus || {}));
+          const v = map.get(payment.month);
+          if (v) st = v;
+        }
+        if (
+          payment.studentId &&
+          payment.studentId.membershipEnd &&
+          new Date(payment.studentId.membershipEnd) < new Date() &&
+          st !== "paid"
+        ) {
+          st = "overdue";
+        }
+        return st;
+      })(),
+      month: `${monthName} ${year}`,
+      monthlyFee: payment.studentId.fee,
+    };
+
+    res.json(formatted);
   } catch (error) {
     console.error("Error fetching payment:", error);
     res.status(500).json({ error: "Failed to fetch payment" });

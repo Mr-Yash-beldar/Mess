@@ -8,6 +8,7 @@ const messRoutes = require("./messRoutes");
 const studentRoutes = require("./studentRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const ownerRoutes = require("./ownerRoutes");
+const notificationRoutes = require("./notificationRoutes");
 
 // Register routes with prefixes
 router.use("/auth", authRoutes);
@@ -15,6 +16,7 @@ router.use("/mess", messRoutes);
 router.use("/students", studentRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/owners", ownerRoutes);
+router.use("/notifications", notificationRoutes);
 
 router.get("/", (req, res) => {
   res.json({
@@ -25,6 +27,7 @@ router.get("/", (req, res) => {
       students: "/api/students",
       payments: "/api/payments",
       owners: "/api/owners",
+      notifications: "/api/notifications",
     },
   });
 });

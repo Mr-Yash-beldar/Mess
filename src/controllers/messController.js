@@ -23,7 +23,7 @@ exports.getAllMesses = async (req, res) => {
         address: m.address || "",
         contact,
         capacity: m.capacity || 0,
-        totalstudent: m.totalStudents || 0,
+        currentOccupancy: m.totalStudents || 0,
         ownerName: owner ? owner.name : null,
         totalRevenue: m.revenue || 0,
       };
@@ -33,27 +33,6 @@ exports.getAllMesses = async (req, res) => {
   } catch (error) {
     console.error("Error fetching messes:", error);
     res.status(500).json({ error: "Failed to fetch messes" });
-  }
-};
-
-// @desc    Get messes without owners
-// @route   GET /api/mess/unassigned
-// @access  Admin
-exports.getUnassignedMesses = async (req, res) => {
-  try {
-    const messes = await Mess.find({ ownerId: null });
-
-    const formatted = messes.map((m) => {
-      return {
-        id: m._id,
-        name: m.name,
-      };
-    });
-
-    res.json(formatted);
-  } catch (error) {
-    console.error("Error fetching unassigned messes:", error);
-    res.status(500).json({ error: "Failed to fetch unassigned messes" });
   }
 };
 
@@ -81,7 +60,7 @@ exports.getMessById = async (req, res) => {
       address: mess.address || "",
       contact,
       capacity: mess.capacity || 0,
-      totalstudent: mess.totalStudents || 0,
+      currentOccupancy: mess.totalStudents || 0,
       ownerName: owner ? owner.name : null,
       totalRevenue: mess.revenue || 0,
     };
@@ -194,6 +173,27 @@ exports.updateMess = async (req, res) => {
   } catch (error) {
     console.error("Error updating mess:", error);
     res.status(500).json({ error: "Failed to update mess" });
+  }
+};
+
+// @desc    Get messes without owners
+// @route   GET /api/mess/unassigned
+// @access  Admin
+exports.getUnassignedMesses = async (req, res) => {
+  try {
+    const messes = await Mess.find({ ownerId: null });
+
+    const formatted = messes.map((m) => {
+      return {
+        id: m._id,
+        name: m.name,
+      };
+    });
+
+    res.json(formatted);
+  } catch (error) {
+    console.error("Error fetching unassigned messes:", error);
+    res.status(500).json({ error: "Failed to fetch unassigned messes" });
   }
 };
 

@@ -8,6 +8,7 @@ const {
   createOwner,
   updateOwner,
   toggleActive,
+  deleteOwner,
 } = require("../controllers/ownerController");
 
 // All routes admin-only
@@ -17,6 +18,7 @@ router.get("/", listOwners);
 router.get("/:id", getOwner);
 router.post("/", createOwner);
 router.put("/:id", updateOwner);
-router.post("/:id/toggle-active", toggleActive); // toggle and optionally extend subscription
+router.put("/:id/toggle-active", toggleActive);
+router.delete("/:id", deleteOwner);
 
 module.exports = router;
