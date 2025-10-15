@@ -32,16 +32,46 @@ exports.login = async (req, res) => {
     const isMatch = await user.matchPassword(password);
     if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
 
-    const token = generateToken(user);
+    // load full user to check isActive and subscriptionExpiry (and populate mess)
+    const userFull = await User.findById(user._id).populate("messId", "name");
+    if (!userFull)
+      return res.status(500).json({ error: "Failed to load user details" });
 
+    // Check account active
+    if (userFull.isActive === false) {
+      return res
+        .status(403)
+        .json({
+          error: "Your account has been blocked. Please contact admin.",
+        });
+    }
+
+    // If owner, check subscription expiry
+    if (
+      userFull.role === "owner" &&
+      userFull.subscriptionExpiry &&
+      new Date(userFull.subscriptionExpiry) < new Date()
+    ) {
+      return res
+        .status(403)
+        .json({
+          error:
+            "Your subscription has expired. Please contact admin to renew.",
+        });
+    }
+
+    const token = generateToken(userFull);
     res.json({
       message: "Login successful",
       token,
       user: {
-        id: user._id,
-        username: user.username,
-        role: user.role,
-        messId: user.messId,
+        id: userFull._id,
+        username: userFull.username,
+        role: userFull.role,
+        messId: userFull.messId,
+        subscriptionExpiry: userFull.subscriptionExpiry
+          ? new Date(userFull.subscriptionExpiry).toISOString().split("T")[0]
+          : null,
       },
     });
   } catch (error) {
