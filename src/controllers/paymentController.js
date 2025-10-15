@@ -170,7 +170,8 @@ exports.getPaymentById = async (req, res) => {
 // @access  Admin / Owner
 exports.addPayment = async (req, res) => {
   try {
-    const { studentId, amount, paymentMode } = req.body;
+    const { studentId, amount, paymentMode, date } = req.body;
+    console.log("addPayment called with:", req.body);
 
     if (!studentId || !amount) {
       return res
@@ -188,20 +189,34 @@ exports.addPayment = async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    console.log("Recording payment:", {
-      studentId,
-      amount,
-      paymentMode,
-      recordedBy: req.user._id,
-    });
-    // determine payment month (YYYY-MM)
-    const payMonth = new Date().toISOString().slice(0, 7);
+    // console.log("Recording payment (body):", {
+    //   studentId,
+    //   amount,
+    //   paymentMode,
+    //   date,
+    //   recordedBy: req.user._id,
+    // });
+
+    // determine paymentDate (use provided date if valid, otherwise now)
+    let payDate = null;
+    if (date) {
+      payDate = new Date(date);
+      if (isNaN(payDate.getTime())) {
+        return res.status(400).json({ error: "Invalid date provided" });
+      }
+    } else {
+      payDate = new Date();
+    }
+
+    // determine payment month (YYYY-MM) from payDate
+    const payMonth = payDate.toISOString().slice(0, 7);
 
     const payment = await Payment.create({
       messId: student.messId,
       studentId: student._id,
       amount,
       month: payMonth,
+      paymentDate: payDate,
       paymentMode,
       recordedBy: req.user._id,
     });
