@@ -39,11 +39,9 @@ exports.login = async (req, res) => {
 
     // Check account active
     if (userFull.isActive === false) {
-      return res
-        .status(403)
-        .json({
-          error: "Your account has been blocked. Please contact admin.",
-        });
+      return res.status(403).json({
+        error: "Your account has been blocked. Please contact admin.",
+      });
     }
 
     // If owner, check subscription expiry
@@ -52,12 +50,9 @@ exports.login = async (req, res) => {
       userFull.subscriptionExpiry &&
       new Date(userFull.subscriptionExpiry) < new Date()
     ) {
-      return res
-        .status(403)
-        .json({
-          error:
-            "Your subscription has expired. Please contact admin to renew.",
-        });
+      return res.status(403).json({
+        error: "Your subscription has expired. Please contact admin to renew.",
+      });
     }
 
     const token = generateToken(userFull);
@@ -70,7 +65,7 @@ exports.login = async (req, res) => {
         role: userFull.role,
         messId: userFull.messId,
         subscriptionExpiry: userFull.subscriptionExpiry
-          ? new Date(userFull.subscriptionExpiry).toISOString().split("T")[0]
+          ? new Date(userFull.subscriptionExpiry).toLocaleDateString("en-GB")
           : null,
       },
     });
@@ -106,7 +101,7 @@ exports.me = async (req, res) => {
       password: userFull.originalPassword || null,
       isActive: userFull.isActive,
       subscriptionExpiry: userFull.subscriptionExpiry
-        ? new Date(userFull.subscriptionExpiry).toISOString().split("T")[0]
+        ? new Date(userFull.subscriptionExpiry).toLocaleDateString("en-GB")
         : null,
     };
     res.json({ user: out });

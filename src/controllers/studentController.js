@@ -1,6 +1,7 @@
 // src/controllers/studentController.js
 const Student = require("../models/Student");
 const Mess = require("../models/Mess");
+const Payment = require("../models/Payment");
 
 // @desc    Get all students for a mess
 // @route   GET /api/students
@@ -36,17 +37,17 @@ exports.getStudents = async (req, res) => {
       gender: s.gender,
       mobile: s.mobile,
       address: s.address,
-      joiningDate: s.createdAt.toISOString().split("T")[0],
+      joiningDate: new Date(s.createdAt).toLocaleDateString("en-GB"),
       messId: s.messId,
       mealPlan: s.mealPlan,
       monthlyFee: s.fee,
       membershipExpiry: s.membershipEnd
-        ? s.membershipEnd.toISOString().split("T")[0]
+        ? new Date(s.membershipEnd).toLocaleDateString("en-GB")
         : null,
       paymentStatus: paymentMap.has(s._id.toString()) ? "paid" : "unpaid",
       isFrozen: s.isFrozen || false,
       frozenDate: s.freezeStart
-        ? s.freezeStart.toISOString().split("T")[0]
+        ? new Date(s.freezeStart).toLocaleDateString("en-GB")
         : null,
     }));
 
@@ -88,17 +89,17 @@ exports.getStudentById = async (req, res) => {
       gender: student.gender,
       mobile: student.mobile,
       address: student.address,
-      joiningDate: student.startDate.toISOString().split("T")[0],
+      joiningDate: new Date(student.startDate).toLocaleDateString("en-GB"),
       messId: student.messId,
       mealPlan: student.mealPlan,
       monthlyFee: student.fee,
       membershipExpiry: student.membershipEnd
-        ? student.membershipEnd.toISOString().split("T")[0]
+        ? new Date(student.membershipEnd).toLocaleDateString("en-GB")
         : null,
       paymentStatus: payment ? "paid" : "unpaid",
       isFrozen: student.isFrozen || false,
       frozenDate: student.freezeStart
-        ? student.freezeStart.toISOString().split("T")[0]
+        ? new Date(student.freezeStart).toLocaleDateString("en-GB")
         : null,
     };
 
@@ -202,12 +203,31 @@ exports.deleteStudent = async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
+    // Delete payments associated with this student and adjust mess revenue
+    try {
+      const payments = await Payment.find({ studentId: student._id });
+      if (payments && payments.length > 0) {
+        const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        if (student.messId && totalPaid !== 0) {
+          await Mess.findByIdAndUpdate(student.messId, {
+            $inc: { revenue: -totalPaid },
+          });
+        }
+        await Payment.deleteMany({ studentId: student._id });
+      }
+    } catch (e) {
+      console.error("Failed to cleanup payments for student:", e);
+      // continue with deletion of student even if cleanup fails
+    }
+
     await student.deleteOne();
 
     // Update mess total student count
-    await Mess.findByIdAndUpdate(student.messId, {
-      $inc: { totalStudents: -1 },
-    });
+    if (student.messId) {
+      await Mess.findByIdAndUpdate(student.messId, {
+        $inc: { totalStudents: -1 },
+      });
+    }
 
     res.json({ message: "Student deleted successfully" });
   } catch (error) {

@@ -26,7 +26,11 @@ exports.getPayments = async (req, res) => {
       .populate("recordedBy", "username role")
       .sort({ paymentDate: -1 });
 
+    console.log(`Fetched ${payments}`);
+
     const formatted = payments.map((p) => {
+      // defensively handle missing student (deleted or not populated)
+      const student = p.studentId || null;
       // Convert month (YYYY-MM) to Month YYYY format
       const [year, month] = p.month.split("-");
       const monthNames = [
@@ -45,38 +49,41 @@ exports.getPayments = async (req, res) => {
       ];
       const monthName = monthNames[parseInt(month) - 1];
 
-      // Determine payment status from the student's paymentStatus map keyed by YYYY-MM
-      let status = "Pending";
-      const monthlyFee = p.studentId.fee;
-      if (p.amount === monthlyFee) {
-        status = "paid";
-      } else if (p.amount < monthlyFee) {
-        status = "partial";
-      } else if (p.amount > monthlyFee) {
-        status = "error";
-      }
-      // If membership expired before the payment date and not paid, mark as overdue
-      if (
-        p.studentId &&
-        p.studentId.membershipEnd &&
-        new Date(p.studentId.membershipEnd) < new Date() &&
-        status !== "paid"
-      ) {
-        status = "overdue";
+      // Determine payment status from the student's payment info when available
+      let status = "unknown";
+      const monthlyFee = student && student.fee ? student.fee : null;
+      if (monthlyFee !== null) {
+        status = "pending";
+        if (p.amount === monthlyFee) {
+          status = "paid";
+        } else if (p.amount < monthlyFee) {
+          status = "partial";
+        } else if (p.amount > monthlyFee) {
+          status = "error";
+        }
+        // If membership expired before now and not paid, mark as overdue
+        if (
+          student &&
+          student.membershipEnd &&
+          new Date(student.membershipEnd) < new Date() &&
+          status !== "paid"
+        ) {
+          status = "overdue";
+        }
       }
 
       return {
         id: p._id,
-        studentId: p.studentId._id,
-        studentName: p.studentId.name,
+        studentId: student ? student._id : null,
+        studentName: student ? student.name : null,
         messId: p.messId._id,
         messName: p.messId.name,
         amount: p.amount,
-        date: p.paymentDate.toISOString().split("T")[0],
+        date: new Date(p.paymentDate).toLocaleDateString("en-GB"),
         mode: p.paymentMode,
         status,
         month: `${monthName} ${year}`,
-        monthlyFee: p.studentId.fee,
+        monthlyFee: monthlyFee,
       };
     });
 
@@ -124,30 +131,33 @@ exports.getPaymentById = async (req, res) => {
     ];
     const monthName = monthNames[parseInt(month) - 1];
 
+    const student = payment.studentId || null;
+    const monthlyFee = student && student.fee ? student.fee : null;
     const formatted = {
       id: payment._id,
-      studentId: payment.studentId._id,
-      studentName: payment.studentId.name,
+      studentId: student ? student._id : null,
+      studentName: student ? student.name : null,
       messId: payment.messId._id,
       messName: payment.messId.name,
       amount: payment.amount,
-      date: payment.paymentDate.toISOString().split("T")[0],
+      date: new Date(payment.paymentDate).toLocaleDateString("en-GB"),
       mode: payment.paymentMode,
       // Determine status from student's paymentStatus for the payment month
       status: (() => {
-        let st = "unpaid";
-        if (payment.studentId && payment.studentId.paymentStatus) {
+        let st = "unknown";
+        if (monthlyFee !== null) st = "unpaid";
+        if (student && student.paymentStatus) {
           const map =
-            payment.studentId.paymentStatus instanceof Map
-              ? payment.studentId.paymentStatus
-              : new Map(Object.entries(payment.studentId.paymentStatus || {}));
+            student.paymentStatus instanceof Map
+              ? student.paymentStatus
+              : new Map(Object.entries(student.paymentStatus || {}));
           const v = map.get(payment.month);
           if (v) st = v;
         }
         if (
-          payment.studentId &&
-          payment.studentId.membershipEnd &&
-          new Date(payment.studentId.membershipEnd) < new Date() &&
+          student &&
+          student.membershipEnd &&
+          new Date(student.membershipEnd) < new Date() &&
           st !== "paid"
         ) {
           st = "overdue";
@@ -155,7 +165,7 @@ exports.getPaymentById = async (req, res) => {
         return st;
       })(),
       month: `${monthName} ${year}`,
-      monthlyFee: payment.studentId.fee,
+      monthlyFee: monthlyFee,
     };
 
     res.json(formatted);
@@ -171,7 +181,7 @@ exports.getPaymentById = async (req, res) => {
 exports.addPayment = async (req, res) => {
   try {
     const { studentId, amount, paymentMode, date } = req.body;
-    console.log("addPayment called with:", req.body);
+    // console.log("addPayment called with:", req.body);
 
     if (!studentId || !amount) {
       return res

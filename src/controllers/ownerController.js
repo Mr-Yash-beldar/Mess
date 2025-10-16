@@ -21,7 +21,7 @@ exports.listOwners = async (req, res) => {
       password: o.originalPassword,
       isActive: o.isActive,
       subscriptionExpiry: o.subscriptionExpiry
-        ? new Date(o.subscriptionExpiry).toISOString().split("T")[0]
+        ? new Date(o.subscriptionExpiry).toLocaleDateString("en-GB")
         : null,
     }));
 
@@ -53,7 +53,7 @@ exports.getOwner = async (req, res) => {
       password: owner.originalPassword,
       isActive: owner.isActive,
       subscriptionExpiry: owner.subscriptionExpiry
-        ? new Date(owner.subscriptionExpiry).toISOString().split("T")[0]
+        ? new Date(owner.subscriptionExpiry).toLocaleDateString("en-GB")
         : null,
     };
     res.json(formatted);

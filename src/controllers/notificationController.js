@@ -22,7 +22,7 @@ exports.getNotifications = async (req, res) => {
         capacityAlerts.push({
           type: "capacity",
           message: `${m.name} is at ${percent}% capacity (${occupied}/${total} students)`,
-          date: new Date().toISOString().split("T")[0],
+          date: new Date().toLocaleDateString("en-GB"),
           read: false,
           messId: m._id,
         });
@@ -58,7 +58,7 @@ exports.getNotifications = async (req, res) => {
         message: `${overdueCount} overdue payments pending${
           isOwner ? "" : " across all messes"
         }`,
-        date: new Date().toISOString().split("T")[0],
+        date: new Date().toLocaleDateString("en-GB"),
         read: false,
       });
     }
@@ -80,7 +80,7 @@ exports.getNotifications = async (req, res) => {
       membershipAlerts.push({
         type: "membership",
         message: `${expiringCount} memberships expiring this month`,
-        date: new Date().toISOString().split("T")[0],
+        date: new Date().toLocaleDateString("en-GB"),
         read: false,
       });
     }
