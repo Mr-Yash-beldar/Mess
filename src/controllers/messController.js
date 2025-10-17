@@ -1,6 +1,8 @@
 // src/controllers/messController.js
 const Mess = require("../models/Mess");
 const User = require("../models/User");
+const Student = require("../models/Student");
+const Payment = require("../models/Payment");
 
 // @desc    Get all messes
 // @route   GET /api/mess
@@ -205,11 +207,42 @@ exports.deleteMess = async (req, res) => {
     const mess = await Mess.findById(req.params.id);
     if (!mess) return res.status(404).json({ error: "Mess not found" });
 
-    // Unlink owner’s messId
-    await User.findByIdAndUpdate(mess.ownerId, { messId: null });
+    // Collect related entities
+    const ownerId = mess.ownerId || null;
+    const students = await Student.find(
+      { messId: mess._id },
+      { _id: 1 }
+    ).lean();
+    const studentIds = students.map((s) => s._id);
 
+    // Delete payments associated to this mess or its students
+    try {
+      await Payment.deleteMany({
+        $or: [{ messId: mess._id }, { studentId: { $in: studentIds } }],
+      });
+    } catch (e) {
+      console.error("Failed to delete payments for mess:", mess._id, e);
+    }
+
+    // Delete students of this mess
+    try {
+      await Student.deleteMany({ messId: mess._id });
+    } catch (e) {
+      console.error("Failed to delete students for mess:", mess._id, e);
+    }
+
+    // Delete owner (if any)
+    try {
+      if (ownerId) {
+        await User.findByIdAndDelete(ownerId);
+      }
+    } catch (e) {
+      console.error("Failed to delete owner for mess:", mess._id, e);
+    }
+
+    // Finally delete the mess itself
     await mess.deleteOne();
-    res.json({ message: "Mess deleted successfully" });
+    res.json({ message: "Mess and related data deleted successfully" });
   } catch (error) {
     console.error("Error deleting mess:", error);
     res.status(500).json({ error: "Failed to delete mess" });
