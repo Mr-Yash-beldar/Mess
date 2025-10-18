@@ -26,7 +26,7 @@ exports.getPayments = async (req, res) => {
       .populate("recordedBy", "username role")
       .sort({ paymentDate: -1 });
 
-    console.log(`Fetched ${payments}`);
+    // console.log(`Fetched ${payments}`);
 
     const formatted = payments.map((p) => {
       // defensively handle missing student (deleted or not populated)
@@ -89,7 +89,7 @@ exports.getPayments = async (req, res) => {
 
     res.json(formatted);
   } catch (error) {
-    console.error("Error fetching payments:", error);
+    // console.error("Error fetching payments:", error);
     res.status(500).json({ error: "Failed to fetch payments" });
   }
 };
@@ -170,7 +170,7 @@ exports.getPaymentById = async (req, res) => {
 
     res.json(formatted);
   } catch (error) {
-    console.error("Error fetching payment:", error);
+    // console.error("Error fetching payment:", error);
     res.status(500).json({ error: "Failed to fetch payment" });
   }
 };
@@ -180,7 +180,7 @@ exports.getPaymentById = async (req, res) => {
 // @access  Admin / Owner
 exports.addPayment = async (req, res) => {
   try {
-    const { studentId, amount, paymentMode, date } = req.body;
+    const { studentId, amount, paymentMode, date, expirydate } = req.body;
     // console.log("addPayment called with:", req.body);
 
     if (!studentId || !amount) {
@@ -198,14 +198,6 @@ exports.addPayment = async (req, res) => {
     ) {
       return res.status(403).json({ error: "Access denied" });
     }
-
-    // console.log("Recording payment (body):", {
-    //   studentId,
-    //   amount,
-    //   paymentMode,
-    //   date,
-    //   recordedBy: req.user._id,
-    // });
 
     // determine paymentDate (use provided date if valid, otherwise now)
     let payDate = null;
@@ -234,16 +226,28 @@ exports.addPayment = async (req, res) => {
     // Update mess revenue
     await Mess.findByIdAndUpdate(student.messId, { $inc: { revenue: amount } });
 
-    // If payment is for current month, extend membershipEnd by 30 days
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    if (payMonth === currentMonth) {
-      // extend student's membershipEnd by 30 days
-      const base =
-        student.membershipEnd && student.membershipEnd > new Date()
-          ? new Date(student.membershipEnd)
-          : new Date();
-      base.setDate(base.getDate() + 30);
-      student.membershipEnd = base;
+    // Set student's membershipEnd from provided expirydate (if any)
+    if (expirydate) {
+      let expDate;
+      if (typeof expirydate === "string") {
+        expDate = new Date(expirydate);
+        if (isNaN(expDate.getTime())) {
+          // Try parsing DD/MM/YYYY
+          const ddmmyyyy = /^\d{2}\/\d{2}\/\d{4}$/;
+          if (ddmmyyyy.test(expirydate)) {
+            const [d, m, y] = expirydate.split("/");
+            expDate = new Date(Number(y), Number(m) - 1, Number(d));
+          }
+        }
+      } else {
+        expDate = new Date(expirydate);
+      }
+
+      if (!expDate || isNaN(expDate.getTime())) {
+        return res.status(400).json({ error: "Invalid expirydate provided" });
+      }
+
+      student.membershipEnd = expDate;
       await student.save();
     }
     // mark payment status for month as 'paid'
@@ -261,12 +265,12 @@ exports.addPayment = async (req, res) => {
       student.paymentStatus.set(payMonth, "paid");
       await student.save();
     } catch (e) {
-      console.error("Failed to update student paymentStatus:", e);
+      // console.error("Failed to update student paymentStatus:", e);
     }
 
     res.status(201).json({ message: "Payment recorded successfully", payment });
   } catch (error) {
-    console.error("Error adding payment:", error);
+    // console.error("Error adding payment:", error);
     res.status(500).json({ error: "Failed to add payment" });
   }
 };
@@ -293,7 +297,7 @@ exports.deletePayment = async (req, res) => {
 
     res.json({ message: "Payment deleted successfully" });
   } catch (error) {
-    console.error("Error deleting payment:", error);
+    // console.error("Error deleting payment:", error);
     res.status(500).json({ error: "Failed to delete payment" });
   }
 };

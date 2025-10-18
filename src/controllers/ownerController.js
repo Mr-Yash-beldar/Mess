@@ -27,7 +27,7 @@ exports.listOwners = async (req, res) => {
 
     res.json(formatted);
   } catch (err) {
-    console.error("Error listing owners:", err);
+    // console.error("Error listing owners:", err);
     res.status(500).json({ error: "Failed to list owners" });
   }
 };
@@ -58,7 +58,7 @@ exports.getOwner = async (req, res) => {
     };
     res.json(formatted);
   } catch (err) {
-    console.error("Error getting owner:", err);
+    // console.error("Error getting owner:", err);
     res.status(500).json({ error: "Failed to get owner" });
   }
 };
@@ -118,10 +118,10 @@ exports.createOwner = async (req, res) => {
       } catch (errAttach) {
         // rollback: remove created owner
         await owner.deleteOne();
-        console.error(
-          "Failed to attach owner to mess, rolled back owner creation",
-          errAttach
-        );
+        // console.error(
+        //   "Failed to attach owner to mess, rolled back owner creation",
+        //   errAttach
+        // );
         return res
           .status(500)
           .json({ error: "Failed to assign owner to mess" });
@@ -130,10 +130,10 @@ exports.createOwner = async (req, res) => {
 
     const out = owner.toObject();
     if (out.password) out.password = "<redacted>";
-    console.log(out);
+
     res.status(201).json(out);
   } catch (err) {
-    console.error("Error creating owner:", err);
+    // console.error("Error creating owner:", err);
     res.status(500).json({ error: "Failed to create owner" });
   }
 };
@@ -213,8 +213,8 @@ exports.updateOwner = async (req, res) => {
     if (out.password) out.password = "<redacted>";
     res.json({ message: "Owner updated", owner: out });
   } catch (err) {
-    console.log(err);
-    console.error("Error updating owner:", err);
+    // console.log(err);
+    // console.error("Error updating owner:", err);
     res.status(500).json({ error: "Failed to update owner", err: err });
   }
 };
@@ -229,7 +229,6 @@ exports.toggleActive = async (req, res) => {
     const owner = await User.findById(id);
     if (!owner || owner.role !== "owner")
       return res.status(404).json({ error: "Owner not found" });
-    console.log(`Toggled owner ${owner._id} active to ${owner.isActive}`);
 
     owner.isActive = !owner.isActive;
 
@@ -237,7 +236,7 @@ exports.toggleActive = async (req, res) => {
 
     res.json({ message: "Owner active toggled" });
   } catch (err) {
-    console.error("Error toggling owner active:", err);
+    // console.error("Error toggling owner active:", err);
     res.status(500).json({ error: "Failed to toggle active" });
   }
 };
@@ -265,7 +264,7 @@ exports.deleteOwner = async (req, res) => {
 
     res.json({ message: "Owner deleted successfully" });
   } catch (err) {
-    console.error("Error deleting owner:", err);
+    // console.error("Error deleting owner:", err);
     res.status(500).json({ error: "Failed to delete owner" });
   }
 };

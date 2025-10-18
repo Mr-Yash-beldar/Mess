@@ -70,7 +70,7 @@ exports.login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login Error:", error);
+    // console.error("Login Error:", error);
     res.status(500).json({ error: "Server error during login" });
   }
 };
@@ -106,7 +106,7 @@ exports.me = async (req, res) => {
     };
     res.json({ user: out });
   } catch (err) {
-    console.error("Error in /api/auth/me:", err);
+    // console.error("Error in /api/auth/me:", err);
     res.status(500).json({ error: "Server error" });
   }
 };

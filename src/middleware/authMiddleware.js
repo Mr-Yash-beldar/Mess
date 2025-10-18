@@ -23,7 +23,7 @@ exports.protect = async (req, res, next) => {
     req.user = await User.findById(decoded.id).select("-password"); // attach user to request
     next();
   } catch (error) {
-    console.error("Auth error:", error);
+    // console.error("Auth error:", error);
     res.status(401).json({ error: "Not authorized, invalid token" });
   }
 };

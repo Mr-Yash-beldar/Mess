@@ -1,6 +1,5 @@
 const Mess = require("../models/Mess");
 const Student = require("../models/Student");
-const Payment = require("../models/Payment");
 
 // GET /api/notifications
 // Returns aggregated notifications: capacity alerts, overdue payments, memberships expiring
@@ -90,10 +89,10 @@ exports.getNotifications = async (req, res) => {
       ...paymentAlerts,
       ...membershipAlerts,
     ];
-    console.log("Notifications:", notifications);
+    // console.log("Notifications:", notifications);
     res.json({ notifications });
   } catch (err) {
-    console.error("Error getting notifications:", err);
+    // console.error("Error getting notifications:", err);
     res.status(500).json({ error: "Failed to get notifications" });
   }
 };

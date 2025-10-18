@@ -53,7 +53,7 @@ exports.getStudents = async (req, res) => {
 
     res.json(formatted);
   } catch (error) {
-    console.error("Error fetching students:", error);
+    // console.error("Error fetching students:", error);
     res.status(500).json({ error: "Failed to fetch students" });
   }
 };
@@ -105,7 +105,7 @@ exports.getStudentById = async (req, res) => {
 
     res.json(formatted);
   } catch (error) {
-    console.error("Error fetching student:", error);
+    // console.error("Error fetching student:", error);
     res.status(500).json({ error: "Failed to fetch student" });
   }
 };
@@ -116,7 +116,6 @@ exports.getStudentById = async (req, res) => {
 exports.addStudent = async (req, res) => {
   try {
     const { name, mobile, address, mealPlan, fee, messId, gender } = req.body;
-    console.log(req.body);
 
     const assignedMessId = req.user.role === "owner" ? req.user.messId : messId;
     if (!assignedMessId)
@@ -147,7 +146,7 @@ exports.addStudent = async (req, res) => {
 
     res.status(201).json({ message: "Student added successfully", student });
   } catch (error) {
-    console.error("Error adding student:", error);
+    // console.error("Error adding student:", error);
     res.status(500).json({ error: "Failed to add student", err: error });
   }
 };
@@ -183,7 +182,7 @@ exports.updateStudent = async (req, res) => {
     );
     res.json({ message: "Student updated successfully", student: updated });
   } catch (error) {
-    console.error("Error updating student:", error);
+    // console.error("Error updating student:", error);
     res.status(500).json({ error: "Failed to update student" });
   }
 };
@@ -216,7 +215,7 @@ exports.deleteStudent = async (req, res) => {
         await Payment.deleteMany({ studentId: student._id });
       }
     } catch (e) {
-      console.error("Failed to cleanup payments for student:", e);
+      // console.error("Failed to cleanup payments for student:", e);
       // continue with deletion of student even if cleanup fails
     }
 
@@ -231,7 +230,7 @@ exports.deleteStudent = async (req, res) => {
 
     res.json({ message: "Student deleted successfully" });
   } catch (error) {
-    console.error("Error deleting student:", error);
+    // console.error("Error deleting student:", error);
     res.status(500).json({ error: "Failed to delete student" });
   }
 };
@@ -267,7 +266,7 @@ exports.toggleFreeze = async (req, res) => {
       student,
     });
   } catch (error) {
-    console.error("Error freezing student:", error);
+    // console.error("Error freezing student:", error);
     res.status(500).json({ error: "Failed to toggle freeze" });
   }
 };

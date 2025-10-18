@@ -33,7 +33,7 @@ exports.getAllMesses = async (req, res) => {
 
     res.json(formatted);
   } catch (error) {
-    console.error("Error fetching messes:", error);
+    // console.error("Error fetching messes:", error);
     res.status(500).json({ error: "Failed to fetch messes" });
   }
 };
@@ -69,7 +69,7 @@ exports.getMessById = async (req, res) => {
 
     res.json(formatted);
   } catch (error) {
-    console.error("Error fetching mess:", error);
+    // console.error("Error fetching mess:", error);
     res.status(500).json({ error: "Failed to fetch mess" });
   }
 };
@@ -113,7 +113,7 @@ exports.createMess = async (req, res) => {
 
     res.status(201).json({ message: "Mess created successfully", mess });
   } catch (error) {
-    console.error("Error creating mess:", error);
+    // console.error("Error creating mess:", error);
     res.status(500).json({ error: "Failed to create mess" });
   }
 };
@@ -153,7 +153,7 @@ exports.assignOwner = async (req, res) => {
 
     res.json({ message: "Owner assigned to mess", mess });
   } catch (err) {
-    console.error("Error assigning owner:", err);
+    // console.error("Error assigning owner:", err);
     res.status(500).json({ error: "Failed to assign owner" });
   }
 };
@@ -173,7 +173,7 @@ exports.updateMess = async (req, res) => {
     if (!mess) return res.status(404).json({ error: "Mess not found" });
     res.json({ message: "Mess updated successfully", mess });
   } catch (error) {
-    console.error("Error updating mess:", error);
+    // console.error("Error updating mess:", error);
     res.status(500).json({ error: "Failed to update mess" });
   }
 };
@@ -194,7 +194,7 @@ exports.getUnassignedMesses = async (req, res) => {
 
     res.json(formatted);
   } catch (error) {
-    console.error("Error fetching unassigned messes:", error);
+    // console.error("Error fetching unassigned messes:", error);
     res.status(500).json({ error: "Failed to fetch unassigned messes" });
   }
 };
@@ -221,14 +221,14 @@ exports.deleteMess = async (req, res) => {
         $or: [{ messId: mess._id }, { studentId: { $in: studentIds } }],
       });
     } catch (e) {
-      console.error("Failed to delete payments for mess:", mess._id, e);
+      // console.error("Failed to delete payments for mess:", mess._id, e);
     }
 
     // Delete students of this mess
     try {
       await Student.deleteMany({ messId: mess._id });
     } catch (e) {
-      console.error("Failed to delete students for mess:", mess._id, e);
+      // console.error("Failed to delete students for mess:", mess._id, e);
     }
 
     // Delete owner (if any)
@@ -237,14 +237,14 @@ exports.deleteMess = async (req, res) => {
         await User.findByIdAndDelete(ownerId);
       }
     } catch (e) {
-      console.error("Failed to delete owner for mess:", mess._id, e);
+      // console.error("Failed to delete owner for mess:", mess._id, e);
     }
 
     // Finally delete the mess itself
     await mess.deleteOne();
     res.json({ message: "Mess and related data deleted successfully" });
   } catch (error) {
-    console.error("Error deleting mess:", error);
+    // console.error("Error deleting mess:", error);
     res.status(500).json({ error: "Failed to delete mess" });
   }
 };
