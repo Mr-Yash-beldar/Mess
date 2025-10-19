@@ -146,8 +146,23 @@ exports.addStudent = async (req, res) => {
 
     res.status(201).json({ message: "Student added successfully", student });
   } catch (error) {
+    // Handle duplicate mobile unique index error
+    if (
+      (error && error.code === 11000) ||
+      (error && error.name === "MongoServerError" && error.code === 11000)
+    ) {
+      // optional: check specifically if mobile is the conflicting key
+      const isMobileDup =
+        (error.keyPattern && error.keyPattern.mobile) ||
+        (error.keyValue &&
+          Object.prototype.hasOwnProperty.call(error.keyValue, "mobile"));
+      if (isMobileDup) {
+        return res.status(409).json({ error: "Student already exists" });
+      }
+      return res.status(409).json({ error: "Duplicate value not allowed" });
+    }
     // console.error("Error adding student:", error);
-    res.status(500).json({ error: "Failed to add student", err: error });
+    res.status(500).json({ error: "Failed to add student" });
   }
 };
 
@@ -182,6 +197,20 @@ exports.updateStudent = async (req, res) => {
     );
     res.json({ message: "Student updated successfully", student: updated });
   } catch (error) {
+    // Handle duplicate mobile unique index error
+    if (
+      (error && error.code === 11000) ||
+      (error && error.name === "MongoServerError" && error.code === 11000)
+    ) {
+      const isMobileDup =
+        (error.keyPattern && error.keyPattern.mobile) ||
+        (error.keyValue &&
+          Object.prototype.hasOwnProperty.call(error.keyValue, "mobile"));
+      if (isMobileDup) {
+        return res.status(409).json({ error: "Student already exists" });
+      }
+      return res.status(409).json({ error: "Duplicate value not allowed" });
+    }
     // console.error("Error updating student:", error);
     res.status(500).json({ error: "Failed to update student" });
   }
